@@ -5,7 +5,7 @@ use strict;
 
 =head1 NAME
 
-Algorithm::BestChoice - The great new Algorithm::BestChoice!
+Algorithm::BestChoice - Choose the best
 
 =head1 VERSION
 
@@ -15,37 +15,62 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
-
-Perhaps a little code snippet.
-
-    use Algorithm::BestChoice;
-
-    my $foo = Algorithm::BestChoice->new();
-    ...
-
-=head1 EXPORT
-
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
-
-=head1 FUNCTIONS
-
-=head2 function1
-
 =cut
 
-sub function1 {
+use Moose;
+
+use Algorithm::BestChoice::Matcher;
+use Algorithm::BestChoice::Ranker;
+use Algorithm::BestChoice::Result;
+use Algorithm::BestChoice::Option;
+
+use Scalar::Util qw/looks_like_number/;
+
+has options => qw/is ro required 1 isa ArrayRef/, default => sub { [] };
+
+sub add {
+    my $self = shift;
+    my %given = @_;
+
+    my ($matcher, $ranker);
+    $given{matcher} = $given{match} unless exists $given{matcher};
+    $given{ranker} = $given{rank} unless exists $given{ranker};
+
+    $matcher = Algorithm::BestChoice::Matcher->parse( $given{matcher} );
+    $ranker = Algorithm::BestChoice::Ranker->parse( $given{ranker} );
+
+    my $option = Algorithm::BestChoice::Option->new( matcher => $matcher, ranker => $ranker, value => $given{value} );
+
+    push @{ $self->options }, $option;
 }
 
-=head2 function2
+sub best {
+    my $self = shift;
+    my $key = shift;
 
-=cut
+    my @results;
+    for my $option (@{ $self->options }) {
+        if (my $match = $option->match( $key )) {
+            my $rank;
+            if (ref $match eq 'HASH') {
+                $rank = $match->{rank};
+                die "Got an undefined rank from a match" unless defined $rank;
+                die "Got a non-numeric rank ($rank) from a match" unless looks_like_number $rank;
+            }
+            else {
+                $rank = $option->rank( $key );
+                die "Got an undefined rank from a ranker" unless defined $rank;
+                die "Got a non-numeric rank ($rank) from a ranker" unless looks_like_number $rank;
+            }
+            push @results, Algorithm::BestChoice::Result->new( rank => $rank, value => $option->value );
+        }
+    }
 
-sub function2 {
+    @results = sort { $b->rank <=> $a->rank } @results;
+
+    return wantarray ? @results : $results[0];
 }
 
 =head1 AUTHOR
