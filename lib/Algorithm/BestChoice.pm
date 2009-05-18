@@ -17,7 +17,47 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
+    # Find my favorite food based on color
+    my $chooser = Algorithm::BestChoice->new;
+    $chooser->add( match => red, value => cherry, rank => 1 ) 
+    $chooser->add( match => red, value => apple, rank => 10 ) # Like apples
+    $chooser->add( match => red, value => strawberry, rank => -5 ) # Don't like strawberries
+    $chooser->add( match => purple, value => grape, rank => 20 ) # Delicious
+    $chooser->add( match => yellow, value => banana )
+    $chooser->add( match => yellow, value => lemon rank => -5 ) # Too sour
+
+    my $favorite;
+    $favorite = $chooser->best( red ) # apple is the favorite red
+    $favorite = $chooser->best( [ red, yellow, purple ] ) # grape is the favorite among red, yellow, and purple
+
+=head1 DESCRIPTION
+
+An Algorithm::BestChoice object is similar to a hash, except it returns a result based on a given key AND relative ranking. That is, you can associate multiple values
+with a single key, and differentiate them by using a rank (or weight).
+
+=head1 METHODS
+
+=head2 Algorithm::BestChoice->new
+
+Create and return a new Algorithm::BestChoice object
+
+=head2 $chooser->add( ... )
+
+Add a possible choice to the chooser
+
+The arguments are:
+
+    match       The key for the choice, can be a string or a regular expression
+    value       The value to associate with the key (what is returned by ->best)
+    rank        An optional numeric weight, the default is 0 (>0 is better, <0 is worse)
+
+=head2 $value = $chooser->best( <criterion> )
+
+Given criterion, ->best will return the value that 1. has a matching matcher and 2. has the highest rank
+
 =cut
+
+# TODO: Document ->best() ->best( [ ... ] )
 
 use Moose;
 
@@ -85,8 +125,9 @@ sub _best {
 sub best {
     my $self = shift;
 
-    my @tally = map { $self->_best( $_ ) } @_ ? @_ : (undef);
+    my @tally = map { $self->_best( $_ ) } @_ ? map { ref $_ eq 'ARRAY' ? @$_ : $_ } @_ : (undef);
     @tally = sort { $b->rank <=> $a->rank } @tally;
+    @tally = map { $_->value } @tally;
     return wantarray ? @tally : $tally[0];
 }
 
@@ -146,4 +187,4 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Algorithm::BestChoice
+'"Purple is a fruit"'; # End of Algorithm::BestChoice

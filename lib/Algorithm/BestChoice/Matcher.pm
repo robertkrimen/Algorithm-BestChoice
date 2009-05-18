@@ -20,7 +20,7 @@ sub parse {
 
 use Moose;
 
-# TODO Make this a role
+# TODO Make this a role?
 
 sub match {
     die "Unspecific matcher can't match";
