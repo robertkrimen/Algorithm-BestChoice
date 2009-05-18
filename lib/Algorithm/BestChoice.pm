@@ -34,23 +34,32 @@ sub add {
     my $self = shift;
     my %given = @_;
 
-    my ($matcher, $ranker);
     $given{matcher} = $given{match} unless exists $given{matcher};
     $given{ranker} = $given{rank} unless exists $given{ranker};
+    my ($matcher, $ranker) = @given{ qw/matcher ranker/ };
 
-    $matcher = Algorithm::BestChoice::Matcher->parse( $given{matcher} );
-    $ranker = Algorithm::BestChoice::Ranker->parse( $given{ranker} );
+    if ($ranker && ! ref $ranker && $ranker eq 'length') {
+        if (! ref $matcher) {
+            $ranker = defined $matcher ? length $matcher : 0;
+        }
+        else {
+            die "Trying to rank by length, but given not-scalar matcher $matcher";
+        }
+    }
+
+    $matcher = Algorithm::BestChoice::Matcher->parse( $matcher );
+    $ranker = Algorithm::BestChoice::Ranker->parse( $ranker );
 
     my $option = Algorithm::BestChoice::Option->new( matcher => $matcher, ranker => $ranker, value => $given{value} );
 
     push @{ $self->options }, $option;
 }
 
-sub best {
+sub _best {
     my $self = shift;
     my $key = shift;
 
-    my @results;
+    my @tally;
     for my $option (@{ $self->options }) {
         if (my $match = $option->match( $key )) {
             my $rank;
@@ -64,13 +73,21 @@ sub best {
                 die "Got an undefined rank from a ranker" unless defined $rank;
                 die "Got a non-numeric rank ($rank) from a ranker" unless looks_like_number $rank;
             }
-            push @results, Algorithm::BestChoice::Result->new( rank => $rank, value => $option->value );
+            push @tally, Algorithm::BestChoice::Result->new( rank => $rank, value => $option->value );
         }
     }
 
-    @results = sort { $b->rank <=> $a->rank } @results;
+    return @tally;
+}
 
-    return wantarray ? @results : $results[0];
+# TODO: Test for this multi-key ranker
+# TODO: Probably want to give different weights to different keys!
+sub best {
+    my $self = shift;
+
+    my @tally = map { $self->_best( $_ ) } @_ ? @_ : (undef);
+    @tally = sort { $b->rank <=> $a->rank } @tally;
+    return wantarray ? @tally : $tally[0];
 }
 
 =head1 AUTHOR

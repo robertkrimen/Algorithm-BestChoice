@@ -37,3 +37,17 @@ is( $result[0]->value, 'cherry' );
 @result = $choice->best( 'xyzzyxyz' );
 is( @result, 2 );
 is( $result[0]->value, 'banana' );
+
+$choice->add( value => 'cranberry', rank => 'length', match => 'xyzzy' );
+
+@result = $choice->best();
+is( @result, 2 );
+is( $result[0]->value, 'banana' );
+
+@result = $choice->best( 'xyzzy' );
+is( @result, 4 );
+is( $result[0]->value, 'cranberry' );
+
+@result = $choice->best( 'xyzzyxyz' );
+is( @result, 2 );
+is( $result[0]->value, 'banana' );
